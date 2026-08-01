@@ -1,0 +1,23 @@
+import asyncio
+
+from dotenv import load_dotenv
+
+from src.orchestration.worker import WorkerOrchestrator
+
+load_dotenv()
+
+
+async def main():
+    worker = WorkerOrchestrator()
+
+    result = await worker.run(
+        """
+        Build an AI Interview Copilot for software engineers.
+        """
+    )
+
+    print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
