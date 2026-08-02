@@ -9,7 +9,7 @@ class ResearcherAgent(BaseAgent[ResearchResult]):
     def __init__(self) -> None:
         super().__init__(
             name="Researcher",
-            description="Researches on the user input",
+            description="Researches on the assigned task input",
             instructions=RESEARCHER_INSTRUCTIONS,
             output_type=ResearchResult,
             tools=[
