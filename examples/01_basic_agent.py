@@ -2,7 +2,7 @@ import asyncio
 
 from dotenv import load_dotenv
 
-from src.orchestration.worker import WorkerOrchestrator
+from enterprise_agent_platform.orchestration.worker import WorkerOrchestrator
 
 load_dotenv()
 

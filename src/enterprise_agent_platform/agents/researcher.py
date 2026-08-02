@@ -1,14 +1,17 @@
 from agents import WebSearchTool
-from src.agents.base import BaseAgent
-from src.prompts.researcher import RESEARCHER_INSTRUCTIONS
+
+from enterprise_agent_platform.agents.base import BaseAgent
+from enterprise_agent_platform.models.research_result import ResearchResult
+from enterprise_agent_platform.prompts.researcher import RESEARCHER_INSTRUCTIONS
 
 
-class ResearcherAgent(BaseAgent):
+class ResearcherAgent(BaseAgent[ResearchResult]):
     def __init__(self) -> None:
         super().__init__(
             name="Researcher",
             description="Researches on the user input",
             instructions=RESEARCHER_INSTRUCTIONS,
+            output_type=ResearchResult,
             tools=[
                 WebSearchTool(),
             ],

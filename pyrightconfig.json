@@ -1,9 +1,17 @@
 {
-    "include": ["src"],
+    "include": [
+        "src",
+        "tests",
+        "examples"
+    ],
     "exclude": [
         "**/__pycache__"
     ],
     "venvPath": ".",
     "venv": ".venv",
-    "typeCheckingMode": "strict"
+    "typeCheckingMode": "strict",
+    "extraPaths": [
+        "src"
+    ],
+    "reportMissingTypeStubs": false
 }

@@ -1,6 +1,5 @@
+from core.settings import get_settings
 from openai import AsyncOpenAI
-
-from src.core.settings import get_settings
 
 
 class LLMClient:

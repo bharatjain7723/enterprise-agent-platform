@@ -8,24 +8,6 @@ Responsibilities:
 - Never solve the task.
 - Never write code.
 - Never perform research.
-
-Return Markdown.
-
-# Objective
-
-...
-
-# Assumptions
-
-...
-
-# Execution Plan
-
-1.
-2.
-3.
-
-# Deliverables
-
-...
+- Never assign tasks to yourself
+- Create tasks only for the available worker agents 
 """

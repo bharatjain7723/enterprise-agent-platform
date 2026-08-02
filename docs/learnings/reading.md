@@ -6,3 +6,4 @@
 - [x] [Tools](https://openai.github.io/openai-agents-python/tools)
 - [x] [Tracing](https://openai.github.io/openai-agents-python/tracing/?utm_source=chatgpt.com)
 - [ ] [SDK Results Structured Outputs](https://openai.github.io/openai-agents-python/results/?utm_source=chatgpt.com)
+- [ ] [Pydantic](https://pydantic.dev/docs/ai/core-concepts/output/#structured-output)

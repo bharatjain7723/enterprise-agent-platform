@@ -8,10 +8,18 @@
 - [x] Worker Orchestrator
 
 ## Sprint 2
+
 - [x] Base Agent
 - [x] Research Agent
 - [ ] Coding Agent
 - [ ] Agent Registry
+  ### Research prompt improvement
+  - [ ] Improve multi-search research strategy
+  - [ ] Validate evidence relevance
+  - [ ] Source quality/ranking
+  - [ ] Research retry strategy
+  - [ ] Research evaluation dataset
+  - [ ] Citation verification
 
 ## Sprint 3
 
@@ -30,17 +38,25 @@
 
 - [ ] Multi-Agent Workflows
 
+
+
 ## Sprint 7
 
 - [ ] Evaluation
+
+
 
 ## Sprint 8
 
 - [ ] Observability
 
+
+
 ## Sprint 9
 
 - [ ] FastAPI
+
+
 
 ## Sprint 10
 
