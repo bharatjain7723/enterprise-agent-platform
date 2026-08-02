@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from agents import Agent, Runner
+from agents import Agent, RunConfig, Runner, Tool
 
 
 @dataclass
@@ -10,6 +10,7 @@ class BaseAgent:
     name: str
     description: str
     instructions: str
+    tools: list[Tool] = field(default_factory=list)
 
     agent: Agent = field(init=False)
 
@@ -17,6 +18,7 @@ class BaseAgent:
         self.agent = Agent(
             name=self.name,
             instructions=self.instructions,
+            tools=self.tools,
         )
 
     async def run(self, user_input: str) -> str:
@@ -25,6 +27,13 @@ class BaseAgent:
         result = await Runner.run(
             self.agent,
             input=user_input,
+            run_config=RunConfig(
+                workflow_name=f"{self.name} Workflow",
+                trace_metadata={
+                    "agent_name": self.name,
+                    "agent_description": self.description,
+                },
+            ),
         )
 
         return result.final_output
