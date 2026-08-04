@@ -11,8 +11,9 @@
 
 - [x] Base Agent
 - [x] Research Agent
-- [ ] Coding Agent
-- [ ] Agent Registry
+- [x] Coding Agent
+- [x] Agent Registry
+- [ ] Worker Orchestration for multiple agents
   ### Research prompt improvement
   - [ ] Improve multi-search research strategy
   - [ ] Validate evidence relevance

@@ -16,7 +16,8 @@ async def main():
         """
     )
 
-    print(result)
+    # print(result)
+    print(result.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
