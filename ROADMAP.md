@@ -13,7 +13,7 @@
 - [x] Research Agent
 - [x] Coding Agent
 - [x] Agent Registry
-- [ ] Worker Orchestration for multiple agents
+- [x] Worker Orchestration for multiple agents sequential flow
   ### Research prompt improvement
   - [ ] Improve multi-search research strategy
   - [ ] Validate evidence relevance
