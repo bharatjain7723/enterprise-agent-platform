@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from enterprise_agent_platform.models.plan import Plan
 from enterprise_agent_platform.models.task import Task
+from enterprise_agent_platform.models.task_status import TaskStatus
 from enterprise_agent_platform.models.worker_type import WorkerType
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
 from enterprise_agent_platform.orchestration.validator import PlanValidator
@@ -23,15 +24,20 @@ class FakeAgent:
         self,
         name: str,
         delay: float = 0.1,
+        should_fail: bool = False,
     ) -> None:
         self.name = name
         self.delay = delay
+        self.should_fail = should_fail
 
     async def run(
         self,
         user_input: str,
     ) -> FakeResult:
         await asyncio.sleep(self.delay)
+
+        if self.should_fail:
+            raise RuntimeError(f"{self.name} intentionally failed.")
 
         return FakeResult(message=f"{self.name} completed task.")
 
@@ -103,15 +109,17 @@ async def test_executes_dependency_chain() -> None:
 
     worker = create_orchestrator()
 
-    results = await worker.execute(plan)
+    executions = await worker.execute(plan)
 
-    assert len(results) == 2
-    assert "task_1" in results
-    assert "task_2" in results
+    assert len(executions) == 2
+    assert "task_1" in executions
+    assert "task_2" in executions
 
-    assert results["task_1"].output.message == "Fake Researcher completed task."
+    if isinstance(executions["task_1"].output, FakeResult):
+        assert executions["task_1"].output.message == "Fake Researcher completed task."
 
-    assert results["task_2"].output.message == "Fake Coder completed task."
+    if isinstance(executions["task_2"].output, FakeResult):
+        assert executions["task_2"].output.message == "Fake Coder completed task."
 
 
 @pytest.mark.asyncio
@@ -154,9 +162,9 @@ async def test_executes_branching_dag() -> None:
 
     worker = create_orchestrator()
 
-    results = await worker.execute(plan)
+    executions = await worker.execute(plan)
 
-    assert set(results.keys()) == {
+    assert set(executions.keys()) == {
         "task_1",
         "task_2",
         "task_3",
@@ -281,3 +289,213 @@ async def test_branching_dag_executes_concurrent_wave() -> None:
     elapsed = time.perf_counter() - start
 
     assert elapsed < 1.1
+
+
+@pytest.mark.asyncio
+async def test_failed_task_is_marked_failed() -> None:
+    registry = AgentRegistry()
+
+    registry.register(
+        WorkerType.RESEARCHER,
+        FakeAgent(
+            name="Fake Researcher",
+            should_fail=True,
+        ),
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+    )
+
+    plan = Plan(
+        objective="Test task failure",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.FAILED
+    assert execution.output is None
+    assert execution.attempts == 1
+    assert execution.error == "Fake Researcher intentionally failed."
+
+
+@pytest.mark.asyncio
+async def test_dependent_task_is_blocked_when_dependency_fails() -> None:
+    registry = AgentRegistry()
+
+    registry.register(
+        WorkerType.RESEARCHER,
+        FakeAgent(
+            name="Fake Researcher",
+            should_fail=True,
+        ),
+    )
+
+    registry.register(
+        WorkerType.CODER,
+        FakeAgent(
+            name="Fake Coder",
+        ),
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+    )
+
+    plan = Plan(
+        objective="Test blocked dependency",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+            create_task(
+                "task_2",
+                WorkerType.CODER,
+                ["task_1"],
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    assert executions["task_1"].status == TaskStatus.FAILED
+
+    assert executions["task_2"].status == TaskStatus.BLOCKED
+
+    assert executions["task_2"].attempts == 0
+    assert executions["task_2"].output is None
+    assert executions["task_2"].error is not None
+
+
+@pytest.mark.asyncio
+async def test_blocking_propagates_through_dependency_chain() -> None:
+    registry = AgentRegistry()
+
+    registry.register(
+        WorkerType.RESEARCHER,
+        FakeAgent(
+            name="Fake Researcher",
+            should_fail=True,
+        ),
+    )
+
+    registry.register(
+        WorkerType.CODER,
+        FakeAgent(
+            name="Fake Coder",
+        ),
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+    )
+
+    plan = Plan(
+        objective="Test transitive blocking",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+            create_task(
+                "task_2",
+                WorkerType.CODER,
+                ["task_1"],
+            ),
+            create_task(
+                "task_3",
+                WorkerType.CODER,
+                ["task_2"],
+            ),
+            create_task(
+                "task_4",
+                WorkerType.CODER,
+                ["task_3"],
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    assert executions["task_1"].status == TaskStatus.FAILED
+    assert executions["task_2"].status == TaskStatus.BLOCKED
+    assert executions["task_3"].status == TaskStatus.BLOCKED
+    assert executions["task_4"].status == TaskStatus.BLOCKED
+
+    assert executions["task_1"].attempts == 1
+    assert executions["task_2"].attempts == 0
+    assert executions["task_3"].attempts == 0
+    assert executions["task_4"].attempts == 0
+
+
+@pytest.mark.asyncio
+async def test_independent_branch_continues_after_failure() -> None:
+    registry = AgentRegistry()
+
+    registry.register(
+        WorkerType.RESEARCHER,
+        FakeAgent(
+            name="Fake Researcher",
+            should_fail=True,
+        ),
+    )
+
+    registry.register(
+        WorkerType.CODER,
+        FakeAgent(
+            name="Fake Coder",
+        ),
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+    )
+
+    plan = Plan(
+        objective="Test independent branch failure",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+            create_task(
+                "task_2",
+                WorkerType.CODER,
+                ["task_1"],
+            ),
+            create_task(
+                "task_3",
+                WorkerType.CODER,
+            ),
+            create_task(
+                "task_4",
+                WorkerType.CODER,
+                ["task_3"],
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    assert executions["task_1"].status == TaskStatus.FAILED
+    assert executions["task_2"].status == TaskStatus.BLOCKED
+
+    assert executions["task_3"].status == TaskStatus.COMPLETED
+    assert executions["task_4"].status == TaskStatus.COMPLETED
