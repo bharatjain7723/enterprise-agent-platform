@@ -1,5 +1,6 @@
-from core.settings import get_settings
 from openai import AsyncOpenAI
+
+from enterprise_agent_platform.core.settings import get_settings
 
 
 class LLMClient:

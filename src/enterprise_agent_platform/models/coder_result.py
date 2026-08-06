@@ -17,6 +17,6 @@ class CoderResult(BaseModel):
         description="Any warnings for the orchestrator or other agents from the generated code",
     )
     files: list[CodeFile] = Field(
-        default_factory=list,
+        default_factory=lambda: list[CodeFile](),
         description="List of the files which have been created or modified",
     )

@@ -7,6 +7,7 @@ from enterprise_agent_platform.agents.planner import PlannerAgent
 from enterprise_agent_platform.agents.researcher import ResearcherAgent
 from enterprise_agent_platform.models.worker_type import WorkerType
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
+from enterprise_agent_platform.orchestration.retry import RetryPolicy
 from enterprise_agent_platform.orchestration.validator import PlanValidator
 from enterprise_agent_platform.orchestration.worker import WorkerOrchestrator
 
@@ -32,28 +33,31 @@ async def main() -> None:
         coder,
     )
 
-    # 3. Create a plan validator
-    validator = PlanValidator()
+    # 3. Create the orchestrator
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+        ),
+    )
 
-    # 4. Create the orchestrator
-    worker = WorkerOrchestrator(registry=registry, validator=validator)
-
-    # 5. User input
+    # 4. User input
     user_input = """
     Research Python's functools.lru_cache and create a small Python
     example demonstrating when and how to use it.
     """
 
-    # 6. Planner converts user input → Plan
+    # 5. Planner converts user input → Plan
     plan = await planner.run(user_input)
 
     print("\n========== PLAN ==========\n")
     print(plan.model_dump_json(indent=2))
 
-    # 7. Worker executes the Plan
+    # 6. Worker executes the Plan
     results = await worker.execute(plan)
 
-    # 8. Print results
+    # 7. Print results
     print("\n========== RESULTS ==========\n")
 
     for task_id, task_result in results.items():

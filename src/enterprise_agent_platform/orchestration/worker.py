@@ -7,6 +7,7 @@ from enterprise_agent_platform.models.task import Task
 from enterprise_agent_platform.models.task_execution import TaskExecution
 from enterprise_agent_platform.models.task_status import TaskStatus
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
+from enterprise_agent_platform.orchestration.retry import RetryPolicy
 from enterprise_agent_platform.orchestration.validator import PlanValidator
 
 
@@ -17,10 +18,12 @@ class WorkerOrchestrator:
         self,
         registry: AgentRegistry,
         validator: PlanValidator,
+        retry_policy: RetryPolicy,
     ) -> None:
         """Initializes the worker orchestrator."""
         self.registry = registry
         self.validator = validator
+        self.retry_policy = retry_policy
 
     async def execute(
         self,
@@ -35,8 +38,10 @@ class WorkerOrchestrator:
         }
 
         while self._has_pending_tasks(executions):
+            # Propagate failures from previous execution wave.
             self._mark_blocked_tasks(executions)
 
+            # Blocking may have removed all remaining pending work.
             if not self._has_pending_tasks(executions):
                 break
 
@@ -72,19 +77,29 @@ class WorkerOrchestrator:
         task = execution.task
 
         execution.status = TaskStatus.RUNNING
-        execution.attempts += 1
 
-        try:
-            dependency_executions = self._get_dependency_executions(task, executions)
-            input_str = self._build_task_input(task, dependency_executions)
-            result = await self.registry.get(task.agent).run(input_str)
+        while execution.attempts < self.retry_policy.max_attempts:
+            execution.attempts += 1
 
-            execution.output = result
-            execution.status = TaskStatus.COMPLETED
-            execution.error = None
-        except Exception as exc:
-            execution.status = TaskStatus.FAILED
-            execution.error = str(exc)
+            try:
+                dependency_executions = self._get_dependency_executions(task, executions)
+                input_str = self._build_task_input(task, dependency_executions)
+                result = await self.registry.get(task.agent).run(input_str)
+
+                execution.output = result
+                execution.status = TaskStatus.COMPLETED
+                execution.error = None
+                return
+
+            except Exception as exc:
+                execution.error = str(exc)
+
+                if not self.retry_policy.should_retry(execution.attempts, exc):
+                    execution.status = TaskStatus.FAILED
+                    return
+
+                delay = self.retry_policy.get_delay(execution.attempts)
+                await asyncio.sleep(delay)
 
     def _get_dependency_executions(
         self,

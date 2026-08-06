@@ -4,11 +4,13 @@ import time
 import pytest
 from pydantic import BaseModel
 
+from enterprise_agent_platform.exceptions import NonRetryableError, RetryableError
 from enterprise_agent_platform.models.plan import Plan
 from enterprise_agent_platform.models.task import Task
 from enterprise_agent_platform.models.task_status import TaskStatus
 from enterprise_agent_platform.models.worker_type import WorkerType
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
+from enterprise_agent_platform.orchestration.retry import RetryPolicy
 from enterprise_agent_platform.orchestration.validator import PlanValidator
 from enterprise_agent_platform.orchestration.worker import WorkerOrchestrator
 
@@ -23,21 +25,35 @@ class FakeAgent:
     def __init__(
         self,
         name: str,
-        delay: float = 0.1,
+        delay: float = 0.0,
         should_fail: bool = False,
+        fail_attempts: int = 0,
+        error: Exception | None = None,
     ) -> None:
         self.name = name
         self.delay = delay
         self.should_fail = should_fail
+        self.fail_attempts = fail_attempts
+        self.error = error
+        self.call_count = 0
 
     async def run(
         self,
         user_input: str,
     ) -> FakeResult:
-        await asyncio.sleep(self.delay)
+        self.call_count += 1
+
+        if self.delay:
+            await asyncio.sleep(self.delay)
 
         if self.should_fail:
             raise RuntimeError(f"{self.name} intentionally failed.")
+
+        if self.call_count <= self.fail_attempts:
+            if self.error is not None:
+                raise self.error
+
+            raise RuntimeError(f"{self.name} failed on attempt {self.call_count}.")
 
         return FakeResult(message=f"{self.name} completed task.")
 
@@ -79,6 +95,11 @@ def create_orchestrator(
     return WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=1,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
     )
 
 
@@ -306,6 +327,11 @@ async def test_failed_task_is_marked_failed() -> None:
     worker = WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=1,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
     )
 
     plan = Plan(
@@ -351,6 +377,11 @@ async def test_dependent_task_is_blocked_when_dependency_fails() -> None:
     worker = WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=1,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
     )
 
     plan = Plan(
@@ -402,6 +433,11 @@ async def test_blocking_propagates_through_dependency_chain() -> None:
     worker = WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=1,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
     )
 
     plan = Plan(
@@ -465,6 +501,11 @@ async def test_independent_branch_continues_after_failure() -> None:
     worker = WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=1,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
     )
 
     plan = Plan(
@@ -499,3 +540,272 @@ async def test_independent_branch_continues_after_failure() -> None:
 
     assert executions["task_3"].status == TaskStatus.COMPLETED
     assert executions["task_4"].status == TaskStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_task_succeeds_on_first_attempt() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=0,
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test immediate success",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.COMPLETED
+    assert execution.attempts == 1
+    assert execution.error is None
+    assert agent.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_task_retries_after_failure() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=1,
+        error=RetryableError("Temporary service failure"),
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test retry",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.COMPLETED
+    assert execution.attempts == 2
+    assert execution.error is None
+    assert agent.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_task_succeeds_on_final_attempt() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=2,
+        error=RetryableError("Temporary service failure"),
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test final retry success",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.COMPLETED
+    assert execution.attempts == 3
+    assert execution.error is None
+    assert agent.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_task_fails_after_max_attempts() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=100,
+        error=RetryableError("Temporary service failure"),
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test retry exhaustion",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.FAILED
+    assert execution.attempts == 3
+    assert agent.call_count == 3
+    assert execution.error is not None
+
+
+@pytest.mark.asyncio
+async def test_task_retries_after_failure_retryable_error() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=2,
+        error=RetryableError("Temporary service failure"),
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test retry",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.COMPLETED
+    assert execution.attempts == 3
+    assert execution.error is None
+    assert agent.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_task_retries_after_failure_non_retryable_error() -> None:
+    agent = FakeAgent(
+        name="Fake Researcher",
+        fail_attempts=2,
+        error=NonRetryableError("Invalid configuration"),
+    )
+
+    registry = AgentRegistry()
+    registry.register(
+        WorkerType.RESEARCHER,
+        agent,
+    )
+
+    worker = WorkerOrchestrator(
+        registry=registry,
+        validator=PlanValidator(),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            base_delay_seconds=0,
+            jitter_seconds=0,
+        ),
+    )
+
+    plan = Plan(
+        objective="Test retry",
+        assumptions=[],
+        tasks=[
+            create_task(
+                "task_1",
+                WorkerType.RESEARCHER,
+            ),
+        ],
+    )
+
+    executions = await worker.execute(plan)
+
+    execution = executions["task_1"]
+
+    assert execution.status == TaskStatus.FAILED
+    assert execution.attempts == 1
+    assert execution.error == "Invalid configuration"
+    assert agent.call_count == 1

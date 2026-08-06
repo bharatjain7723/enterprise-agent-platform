@@ -1,22 +1,13 @@
 import asyncio
 
-from dotenv import load_dotenv
-
-from enterprise_agent_platform.orchestration.worker import WorkerOrchestrator
-
-load_dotenv()
+from enterprise_agent_platform.agents.planner import PlannerAgent
 
 
-async def main():
-    worker = WorkerOrchestrator()
+async def main() -> None:
+    planner = PlannerAgent()
 
-    result = await worker.run(
-        """
-        Build an AI Interview Copilot for software engineers.
-        """
-    )
+    result = await planner.run("Build an AI Interview Copilot for software engineers.")
 
-    # print(result)
     print(result.model_dump_json(indent=2))
 
 

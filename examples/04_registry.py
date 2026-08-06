@@ -21,5 +21,10 @@ assert registry.contains(WorkerType.RESEARCHER)
 researcher = registry.get(WorkerType.RESEARCHER)
 coder = registry.get(WorkerType.CODER)
 
-print(researcher.name)
-print(coder.name)
+
+async def run():
+    result = await researcher.run("Explain Python decorators.")
+    return result
+
+
+print(run())

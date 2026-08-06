@@ -18,5 +18,6 @@ class ResearchResult(BaseModel):
         default_factory=list, description="The recommendations from the research findings"
     )
     evidences: list[Evidence] = Field(
-        default_factory=list, description="The evidences to support the findings"
+        default_factory=lambda: list[Evidence](),
+        description="The evidences to support the findings",
     )
