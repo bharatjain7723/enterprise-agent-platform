@@ -14,13 +14,9 @@
 - [x] Coding Agent
 - [x] Agent Registry
 - [x] Worker Orchestration for multiple agents sequential flow
-  ### Research prompt improvement
-  - [ ] Improve multi-search research strategy
-  - [ ] Validate evidence relevance
-  - [ ] Source quality/ranking
-  - [ ] Research retry strategy
-  - [ ] Research evaluation dataset
-  - [ ] Citation verification
+- [x] Worker Orchestration for Dependency-aware concurrent DAG execution
+  - [x] Plan / DAG Validation
+  - [x] Concurrent DAG Executor
 
 ## Sprint 3
 
@@ -39,13 +35,9 @@
 
 - [ ] Multi-Agent Workflows
 
-
-
 ## Sprint 7
 
 - [ ] Evaluation
-
-
 
 ## Sprint 8
 
@@ -62,3 +54,14 @@
 ## Sprint 10
 
 - [ ] Deployment
+
+
+
+## Sprint 11 - Research prompt improvement
+
+- [ ] Improve multi-search research strategy
+- [ ] Validate evidence relevance
+- [ ] Source quality/ranking
+- [ ] Research retry strategy
+- [ ] Research evaluation dataset
+- [ ] Citation verification

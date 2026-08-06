@@ -7,3 +7,15 @@
 - [x] [Tracing](https://openai.github.io/openai-agents-python/tracing/?utm_source=chatgpt.com)
 - [ ] [SDK Results Structured Outputs](https://openai.github.io/openai-agents-python/results/?utm_source=chatgpt.com)
 - [ ] [Pydantic](https://pydantic.dev/docs/ai/core-concepts/output/#structured-output)
+
+
+## Python Architecture & Testing
+
+- [ ] Duck typing
+- [ ] typing.Protocol
+- [ ] Structural vs nominal typing
+- [ ] Dependency inversion
+- [ ] Dependency injection
+- [ ] Test doubles: fakes, mocks and stubs
+- [ ] Why programming against interfaces improves testability
+- [ ] When Protocol is useful vs unnecessary abstraction

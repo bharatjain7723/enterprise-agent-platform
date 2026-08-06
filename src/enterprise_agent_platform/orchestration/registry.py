@@ -1,6 +1,4 @@
-from typing import Any
-
-from enterprise_agent_platform.agents.base import BaseAgent
+from enterprise_agent_platform.agents.protocols import AgentRunner
 from enterprise_agent_platform.models.worker_type import WorkerType
 
 
@@ -8,12 +6,12 @@ class AgentRegistry:
     """Registry containing the worker agents available to the platform."""
 
     def __init__(self) -> None:
-        self._agents: dict[WorkerType, BaseAgent[Any]] = {}
+        self._agents: dict[WorkerType, AgentRunner] = {}
 
     def register(
         self,
         worker_type: WorkerType,
-        agent: BaseAgent[Any],
+        agent: AgentRunner,
     ) -> None:
         """Register an agent for a worker type."""
 
@@ -22,15 +20,21 @@ class AgentRegistry:
 
         self._agents[worker_type] = agent
 
-    def get(self, worker_type: WorkerType) -> BaseAgent[Any]:
-        """Return the agent registered for the given worker type."""
+    def get(
+        self,
+        worker_type: WorkerType,
+    ) -> AgentRunner:
+        """Return the agent registered for the worker type."""
 
         if worker_type not in self._agents:
             raise KeyError(f"No agent registered for worker type: {worker_type.value}")
 
         return self._agents[worker_type]
 
-    def contains(self, worker_type: WorkerType) -> bool:
-        """Return whether an agent is registered for the worker type."""
+    def contains(
+        self,
+        worker_type: WorkerType,
+    ) -> bool:
+        """Return whether an agent is registered."""
 
         return worker_type in self._agents

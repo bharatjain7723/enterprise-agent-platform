@@ -1,26 +1,64 @@
+import asyncio
+
 from pydantic import BaseModel
 
 from enterprise_agent_platform.models.plan import Plan
 from enterprise_agent_platform.models.task import Task
 from enterprise_agent_platform.models.task_result import TaskResult
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
+from enterprise_agent_platform.orchestration.validator import PlanValidator
 
 
 class WorkerOrchestrator:
     """Orchestrates the execution of tasks by the workers."""
 
-    def __init__(self, registry: AgentRegistry) -> None:
+    def __init__(
+        self,
+        registry: AgentRegistry,
+        validator: PlanValidator,
+    ) -> None:
         """Initializes the worker orchestrator."""
         self.registry = registry
+        self.validator = validator
 
     async def execute(
         self,
         plan: Plan,
     ) -> dict[str, TaskResult]:
         """Executes a plan of tasks."""
+
+        self.validator.validate(plan)
+
         results: dict[str, TaskResult] = {}
-        for task in plan.tasks:
-            results[task.id] = await self._execute_task(task, results)
+        pending_tasks: list[Task] = list(plan.tasks)
+
+        while pending_tasks:
+            ready_to_execute_tasks = self._get_ready_tasks(
+                pending_tasks,
+                results,
+            )
+
+            if not ready_to_execute_tasks:
+                raise RuntimeError("No executable tasks found while tasks are still pending.")
+
+            # Execute the ready tasks concurrently
+            task_results = await asyncio.gather(
+                *[self._execute_task(task, results) for task in ready_to_execute_tasks]
+            )
+
+            # Map results back to tasks
+            for task, task_result in zip(
+                ready_to_execute_tasks,
+                task_results,
+                strict=False,
+            ):
+                results[task.id] = task_result
+
+            # Remove completed tasks
+            completed_ids: set[str] = {task.id for task in ready_to_execute_tasks}
+
+            pending_tasks = [task for task in pending_tasks if task.id not in completed_ids]
+
         return results
 
     async def _execute_task(self, task: Task, results: dict[str, TaskResult]) -> TaskResult:
@@ -81,3 +119,18 @@ class WorkerOrchestrator:
                 )
 
         return "\n\n".join(sections)
+
+    def _get_ready_tasks(
+        self,
+        pending_tasks: list[Task],
+        results: dict[str, TaskResult],
+    ) -> list[Task]:
+        """Return tasks whose dependencies have all completed."""
+
+        ready_tasks: list[Task] = []
+
+        for task in pending_tasks:
+            if all(dependency_id in results for dependency_id in task.depends_on):
+                ready_tasks.append(task)
+
+        return ready_tasks
