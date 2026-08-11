@@ -17,40 +17,42 @@
 - [x] Worker Orchestration for Dependency-aware concurrent DAG execution
   - [x] Plan / DAG Validation
   - [x] Concurrent DAG Executor
-- [ ] Task Failure Handling
+- [x] Task Failure Handling
   - [x] Task execution state
   - [x] Failure + blocked dependency handling
-  - [ ] Retry policies
-  - [ ] WorkflowResult / execution summary
+  - [x] Retry policies
+  - [x] WorkflowResult / execution summary
 
 ## Sprint 3
 
-- [ ] Tool Calling
-- [ ] MCP
+- [x] Tool Calling
+- [ ] Build a Real Knowledge Base Tool
 
 
 
 ## Sprint 4
 
-- [ ] Memory
+- [ ] Embeddings
+- [ ] Vector Databases
 
 
 
 ## Sprint 5
 
-- [ ] RAG
+- [ ] Complete RAG
+- [ ] Agent Memory
 
 
 
 ## Sprint 6
 
-- [ ] Multi-Agent Workflows
-
-
+- [ ] Evaluation
+- [ ] MCP
+- [ ] 
 
 ## Sprint 7
 
-- [ ] Evaluation
+- [ ] Multi-Agent Workflows
 
 
 

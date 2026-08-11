@@ -3,6 +3,12 @@ from agents import WebSearchTool
 from enterprise_agent_platform.agents.base import BaseAgent
 from enterprise_agent_platform.models.research_result import ResearchResult
 from enterprise_agent_platform.prompts.researcher import RESEARCHER_INSTRUCTIONS
+from enterprise_agent_platform.services.documentation import DocumentationService
+from enterprise_agent_platform.tools.documentation_search import create_documentation_search_tool
+
+documentation_service = DocumentationService()
+
+documentation_tool = create_documentation_search_tool(documentation_service)
 
 
 class ResearcherAgent(BaseAgent[ResearchResult]):
@@ -12,7 +18,5 @@ class ResearcherAgent(BaseAgent[ResearchResult]):
             description="Researches on the assigned task input",
             instructions=RESEARCHER_INSTRUCTIONS,
             output_type=ResearchResult,
-            tools=[
-                WebSearchTool(),
-            ],
+            tools=[WebSearchTool(), documentation_tool],
         )
