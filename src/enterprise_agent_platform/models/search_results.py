@@ -4,4 +4,7 @@ from enterprise_agent_platform.models.search_result import SearchResult
 
 
 class SearchResults(BaseModel):
-    results: list[SearchResult] = Field(default_factory=list, description="Search results")
+    results: list[SearchResult] = Field(
+        default_factory=lambda: [],
+        description="Search results",
+    )
