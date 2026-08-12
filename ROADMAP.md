@@ -26,13 +26,32 @@
 ## Sprint 3
 
 - [x] Tool Calling
-- [ ] Build a Real Knowledge Base Tool
+- [x] Building a Knowledge Retrieval System - Lexical Search
+  - [x] Knowledge Domain Modeling
+  - [x] Loading Documents
+  - [x] Basic Keyword Search
+  - [x] Ranking Search Results
+  - [x] Multi-Term Queries
+  - [x] Search Result Models
+  - [x] Snippet Generation
+  - [x] Why Keyword Search Eventually Fails - Lexical Search Limitations
+  - [x] Search Evaluation & Benchmarks
 
 
 
 ## Sprint 4
 
-- [ ] Embeddings
+- [ ] Embeddings & Semantic Search
+  - [ ] What Are Embeddings? (Intuition & Math)
+  - [ ] Generating Embeddings
+  - [ ] Similarity Metrics
+    - [ ] Cosine Similarity
+    - [ ] Euclidean Distance
+    - [ ] Dot Product
+  - [ ] Building an Embedding Repository
+  - [ ] Comparing Lexical vs Semantic Search
+  - [ ] Preparing for Vector Databases
+
 - [ ] Vector Databases
 
 
@@ -47,8 +66,9 @@
 ## Sprint 6
 
 - [ ] Evaluation
-- [ ] MCP
-- [ ] 
+- [ ] MCP  
+
+
 
 ## Sprint 7
 
