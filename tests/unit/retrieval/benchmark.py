@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from enterprise_agent_platform.knowledge.markdown_repository import MarkdownKnowledgeRepository
@@ -23,21 +24,26 @@ SEARCH_CASES = [
 ]
 
 
-repository = MarkdownKnowledgeRepository(Path("docs/knowledge"))
+async def main() -> None:
+    repository = MarkdownKnowledgeRepository(Path("docs/knowledge"))
 
-correct = 0
+    correct = 0
 
-for case in SEARCH_CASES:
-    results = repository.search(case.query)
+    for case in SEARCH_CASES:
+        results = await repository.search(case.query)
 
-    if not results:
-        continue
+        if not results:
+            continue
 
-    if results[0].document.id == case.expected_document_id:
-        correct += 1
+        if results[0].document.id == case.expected_document_id:
+            correct += 1
 
-accuracy = correct / len(SEARCH_CASES)
+    accuracy = correct / len(SEARCH_CASES)
 
-print(f"Queries Tested: {len(SEARCH_CASES)}")
-print(f"Correct: {correct}")
-print(f"Accuracy: {accuracy * 100}%")
+    print(f"Queries Tested: {len(SEARCH_CASES)}")
+    print(f"Correct: {correct}")
+    print(f"Accuracy: {accuracy * 100}%")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

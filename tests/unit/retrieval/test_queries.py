@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from enterprise_agent_platform.knowledge.markdown_repository import MarkdownKnowledgeRepository
@@ -31,7 +32,12 @@ SEARCH_CASES = [
 
 repository = MarkdownKnowledgeRepository(Path("docs/knowledge"))
 
-for query, _expected_document in SEARCH_CASES:
-    results = repository.search(query)
 
-    print(results)
+async def main() -> None:
+    for query, _expected_document in SEARCH_CASES:
+        results = await repository.search(query)
+        print(results)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -41,18 +41,26 @@
 
 ## Sprint 4
 
-- [ ] Embeddings & Semantic Search
-  - [ ] What Are Embeddings? (Intuition & Math)
-  - [ ] Generating Embeddings
-  - [ ] Similarity Metrics
-    - [ ] Cosine Similarity
-    - [ ] Euclidean Distance
-    - [ ] Dot Product
-  - [ ] Building an Embedding Repository
-  - [ ] Comparing Lexical vs Semantic Search
-  - [ ] Preparing for Vector Databases
+- [x] Embeddings & Semantic Search
+  - [x] What Are Embeddings? (Intuition)
+  - [x] Vector Mathematics for AI Engineers
+    - [x] Cosine Similarity
+    - [x] Euclidean Distance
+    - [x] Dot Product
+  - [x] Embedding Repository
+  - [x] Cosine Similarity
+  - [x] Implement `EmbeddingService`  - OpenAI Embedding Service
+  - [x] Connect Embeddings to `EmbeddingRepository`
+  - [x] Integrate Semantic Search into `DocumentationService` 
+  - [x] End-to-End Semantic Search Integration
+  - [x] Build the Semantic Indexing Pipeline
+  - [x] Semantic Index Lifecycle & Persistence
+  - [x] Detect stale embeddings
+  - [x] Index synchronization
+  - [x] Wire the persisted index into startup/search
 
 - [ ] Vector Databases
+- [ ] Knowledge Search Service
 
 
 

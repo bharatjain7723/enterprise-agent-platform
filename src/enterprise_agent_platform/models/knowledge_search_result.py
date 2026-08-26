@@ -10,6 +10,6 @@ class KnowledgeSearchResult(BaseModel):
 
     document: KnowledgeDocument = Field(description="The matching knowledge document.")
 
-    score: int = Field(ge=0, description="Relevance score.")
+    score: float = Field(ge=0, description="Relevance score.")
 
     snippet: str = Field(description="Snippet of the document content which matches the query")

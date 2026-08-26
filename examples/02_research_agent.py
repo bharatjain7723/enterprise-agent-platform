@@ -1,14 +1,27 @@
 import asyncio
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from enterprise_agent_platform.agents.researcher import ResearcherAgent
+from enterprise_agent_platform.knowledge.markdown_repository import (
+    MarkdownKnowledgeRepository,
+)
+from enterprise_agent_platform.services.documentation import DocumentationService
 
 load_dotenv()
 
 
 async def main():
-    researcher = ResearcherAgent()
+    repository = MarkdownKnowledgeRepository(Path("docs/knowledge"))
+
+    documentation_service = DocumentationService(
+        searcher=repository,
+    )
+
+    researcher = ResearcherAgent(
+        documentation_service=documentation_service,
+    )
 
     result = await researcher.run(
         """

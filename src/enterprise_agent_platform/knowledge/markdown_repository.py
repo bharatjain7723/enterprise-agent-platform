@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 from enterprise_agent_platform.models.knowledge_document import KnowledgeDocument
@@ -13,7 +14,7 @@ class MarkdownKnowledgeRepository:
     ) -> None:
         self.docs_directory = docs_directory
 
-    def search(
+    async def search(
         self,
         query: str,
     ) -> list[KnowledgeSearchResult]:
@@ -21,7 +22,7 @@ class MarkdownKnowledgeRepository:
 
         search_results: list[KnowledgeSearchResult] = []
 
-        for document in self._load_documents():
+        for document in self.load_documents():
             score = self._calculate_score(
                 document,
                 terms,
@@ -97,13 +98,16 @@ class MarkdownKnowledgeRepository:
 
         return best_line
 
-    def _load_documents(
+    def load_documents(
         self,
     ) -> list[KnowledgeDocument]:
         documents: list[KnowledgeDocument] = []
 
         for path in self.docs_directory.glob("*.md"):
-            # print(f"path: {path}")
+            updated_at = datetime.fromtimestamp(
+                path.stat().st_mtime,
+                tz=UTC,
+            )
 
             documents.append(
                 KnowledgeDocument(
@@ -111,19 +115,8 @@ class MarkdownKnowledgeRepository:
                     title=path.stem.replace("_", " ").title(),
                     source=str(path),
                     content=path.read_text(encoding="utf-8"),
+                    updated_at=updated_at,
                 )
             )
 
         return documents
-
-
-# example testing
-# repository = MarkdownKnowledgeRepository(
-#     Path("C:/Users/Ajay Jain/Desktop/AI Core project/enterprise-agent-platform/docs/knowledge")
-# )
-
-# results = repository.search("asyncio")
-
-# print(results)
-
-# print(results[0].score)

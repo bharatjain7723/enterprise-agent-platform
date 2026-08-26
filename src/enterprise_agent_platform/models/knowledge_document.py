@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -11,3 +13,5 @@ class KnowledgeDocument(BaseModel):
     content: str = Field(description="Full document content.")
 
     source: str = Field(description="Original source of the document.")
+
+    updated_at: datetime = Field(description="time of updating the document")

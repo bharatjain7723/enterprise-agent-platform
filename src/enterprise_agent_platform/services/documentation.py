@@ -1,20 +1,18 @@
-from enterprise_agent_platform.models.search_result import SearchResult
-from enterprise_agent_platform.models.search_results import SearchResults
+from enterprise_agent_platform.models.knowledge_search_result import KnowledgeSearchResult
+from enterprise_agent_platform.services.protocols import DocumentationSearcher
 
 
 class DocumentationService:
     """Provides access to project documentation."""
 
-    def search(
+    def __init__(
+        self,
+        searcher: DocumentationSearcher,
+    ) -> None:
+        self.searcher = searcher
+
+    async def search(
         self,
         query: str,
-    ) -> SearchResults:
-        return SearchResults(
-            results=[
-                SearchResult(
-                    title="AsyncIO",
-                    url="https://docs.python.org/3/library/asyncio.html",
-                    snippet=f"Dummy result for '{query}'.",
-                )
-            ]
-        )
+    ) -> list[KnowledgeSearchResult]:
+        return await self.searcher.search(query)

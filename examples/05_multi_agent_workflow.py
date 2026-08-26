@@ -1,26 +1,42 @@
 import asyncio
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from enterprise_agent_platform.agents.coder import CoderAgent
 from enterprise_agent_platform.agents.planner import PlannerAgent
 from enterprise_agent_platform.agents.researcher import ResearcherAgent
+from enterprise_agent_platform.knowledge.markdown_repository import (
+    MarkdownKnowledgeRepository,
+)
 from enterprise_agent_platform.models.worker_type import WorkerType
 from enterprise_agent_platform.orchestration.registry import AgentRegistry
 from enterprise_agent_platform.orchestration.retry import RetryPolicy
 from enterprise_agent_platform.orchestration.validator import PlanValidator
 from enterprise_agent_platform.orchestration.worker import WorkerOrchestrator
+from enterprise_agent_platform.services.documentation import DocumentationService
 
 load_dotenv()
 
 
 async def main() -> None:
-    # 1. Create our agents
+    # 1. Create documentation dependencies
+    repository = MarkdownKnowledgeRepository(Path("docs/knowledge"))
+
+    documentation_service = DocumentationService(
+        searcher=repository,
+    )
+
+    # 2. Create our agents
     planner = PlannerAgent()
-    researcher = ResearcherAgent()
+
+    researcher = ResearcherAgent(
+        documentation_service=documentation_service,
+    )
+
     coder = CoderAgent()
 
-    # 2. Register worker agents
+    # 3. Register worker agents
     registry = AgentRegistry()
 
     registry.register(
@@ -33,7 +49,7 @@ async def main() -> None:
         coder,
     )
 
-    # 3. Create the orchestrator
+    # 4. Create the orchestrator
     worker = WorkerOrchestrator(
         registry=registry,
         validator=PlanValidator(),
@@ -42,22 +58,22 @@ async def main() -> None:
         ),
     )
 
-    # 4. User input
+    # 5. User input
     user_input = """
     Research Python's functools.lru_cache and create a small Python
     example demonstrating when and how to use it.
     """
 
-    # 5. Planner converts user input → Plan
+    # 6. Planner converts user input → Plan
     plan = await planner.run(user_input)
 
     print("\n========== PLAN ==========\n")
     print(plan.model_dump_json(indent=2))
 
-    # 6. Worker executes the Plan
+    # 7. Worker executes the Plan
     results = await worker.execute(plan)
 
-    # 7. Print results
+    # 8. Print results
     print("\n========== RESULTS ==========\n")
 
     for task_id, task_result in results.items():
