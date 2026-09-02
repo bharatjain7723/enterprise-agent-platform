@@ -140,8 +140,50 @@ class FailingIndexStore:
         return None
 
 
+class FakeVectorStore:
+    def __init__(self) -> None:
+        self.documents: list[EmbeddedDocument] = []
+        self.upsert_many_call_count = 0
+        self.delete_call_count = 0
+        self.last_upserted_documents: list[EmbeddedDocument] = []
+        self.last_deleted_document_id: str | None = None
+        self.search_call_count = 0
+        self.last_query_embedding: list[float] | None = None
+        self.last_limit: int | None = None
+        self.search_results: list[KnowledgeSearchResult] = []
+
+    async def upsert_many(
+        self,
+        documents: list[EmbeddedDocument],
+    ) -> None:
+        self.upsert_many_call_count += 1
+        self.last_upserted_documents = documents
+        self.documents.extend(documents)
+
+    async def delete(
+        self,
+        document_id: str,
+    ) -> None:
+        self.delete_call_count += 1
+        self.last_deleted_document_id = document_id
+        self.documents = [
+            document for document in self.documents if document.document.id != document_id
+        ]
+
+    async def search(
+        self,
+        query_embedding: list[float],
+        limit: int = 5,
+    ) -> list[KnowledgeSearchResult]:
+        self.search_call_count += 1
+        self.last_query_embedding = query_embedding
+        self.last_limit = limit
+
+        return self.search_results[:limit]
+
+
 @pytest.mark.asyncio
-async def test_search_returns_results_sorted_by_similarity() -> None:
+async def test_search_returns_results_from_vector_store() -> None:
     document_a = KnowledgeDocument(
         id="asyncio",
         title="AsyncIO",
@@ -164,33 +206,38 @@ async def test_search_returns_results_sorted_by_similarity() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
+    vector_store.search_results = [
+        KnowledgeSearchResult(
+            document=document_a,
+            score=0.95,
+            snippet="Asynchronous programming in Python.",
+        ),
+        KnowledgeSearchResult(
+            document=document_b,
+            score=0.72,
+            snippet="Python programming language.",
+        ),
+    ]
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
-
-    repository.documents = [
-        EmbeddedDocument(
-            document=document_a,
-            embedding=[1.0, 0.0],
-            embedded_at=TEST_TIMESTAMP,
-        ),
-        EmbeddedDocument(
-            document=document_b,
-            embedding=[0.0, 1.0],
-            embedded_at=TEST_TIMESTAMP,
-        ),
-    ]
 
     results = await repository.search("How does asyncio work?")
 
     assert len(results) == 2
 
     assert results[0].document.id == "asyncio"
-    assert results[0].score == pytest.approx(1.0)
+    assert results[0].score == pytest.approx(0.95)
+    assert results[0].snippet == "Asynchronous programming in Python."
 
     assert results[1].document.id == "python"
-    assert results[1].score == pytest.approx(0.0)
+    assert results[1].score == pytest.approx(0.72)
+    assert results[1].snippet == "Python programming language."
 
 
 @pytest.mark.asyncio
@@ -201,9 +248,12 @@ async def test_search_embeds_query_once() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     repository.documents = [
@@ -245,9 +295,12 @@ async def test_search_rejects_empty_query() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     with pytest.raises(
@@ -265,9 +318,12 @@ async def test_search_rejects_whitespace_query() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     with pytest.raises(
@@ -285,9 +341,12 @@ async def test_search_returns_empty_list_when_repository_is_empty() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     results = await repository.search("asyncio")
@@ -300,8 +359,12 @@ async def test_search_returns_empty_list_when_repository_is_empty() -> None:
 async def test_search_propagates_embedding_error() -> None:
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
-        embedding_service=FailingEmbeddingService(), index_store=index_store
+        embedding_service=FailingEmbeddingService(),
+        index_store=index_store,
+        vector_store=vector_store,
     )
 
     repository.documents = [
@@ -326,51 +389,32 @@ async def test_search_propagates_embedding_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_preserves_document_embedding_relationship() -> None:
-    document_a = KnowledgeDocument(
-        id="a",
-        title="Document A",
-        content="A",
-        source="",
-        updated_at=TEST_TIMESTAMP,
-    )
-
-    document_b = KnowledgeDocument(
-        id="b",
-        title="Document B",
-        content="B",
-        source="",
-        updated_at=TEST_TIMESTAMP,
-    )
-
+async def test_search_passes_query_embedding_to_vector_store() -> None:
     embedding_service = FakeEmbeddingService(
         embedding=[0.0, 1.0],
     )
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
-    repository.documents = [
-        EmbeddedDocument(
-            document=document_a,
-            embedding=[1.0, 0.0],
-            embedded_at=TEST_TIMESTAMP,
-        ),
-        EmbeddedDocument(
-            document=document_b,
-            embedding=[0.0, 1.0],
-            embedded_at=TEST_TIMESTAMP,
-        ),
+    await repository.search("query")
+
+    assert embedding_service.embed_call_count == 1
+    assert embedding_service.last_text == "query"
+
+    assert vector_store.search_call_count == 1
+    assert vector_store.last_query_embedding == [
+        0.0,
+        1.0,
     ]
-
-    results = await repository.search("query")
-
-    assert results[0].document.id == "b"
-    assert results[0].score == pytest.approx(1.0)
+    assert vector_store.last_limit == 5
 
 
 @pytest.mark.asyncio
@@ -448,9 +492,12 @@ async def test_index_documents_creates_embedded_documents() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     await repository.index_documents([document_a, document_b])
@@ -472,9 +519,12 @@ async def test_index_documents_with_empty_list() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     await repository.index_documents([])
@@ -511,9 +561,12 @@ async def test_index_documents_embeds_title_and_content() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     await repository.index_documents([document_a, document_b])
@@ -559,9 +612,12 @@ async def test_index_documents_rejects_embedding_count_mismatch() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     with pytest.raises(
@@ -589,9 +645,12 @@ async def test_index_documents_preserves_existing_index_when_embedding_fails() -
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     await repository.index_documents([existing_document])
@@ -628,9 +687,12 @@ async def test_index_documents_saves_semantic_index() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     documents = [
@@ -667,9 +729,12 @@ async def test_load_index_restores_documents() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     documents = [
@@ -701,9 +766,12 @@ async def test_load_index_returns_false_when_index_does_not_exist() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     loaded = await repository.load_index()
@@ -720,9 +788,12 @@ async def test_index_documents_does_not_update_memory_when_save_fails() -> None:
         ],
     )
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=FailingIndexStore(),
+        vector_store=vector_store,
     )
 
     document = KnowledgeDocument(
@@ -744,9 +815,12 @@ async def test_get_stale_documents_includes_missing_documents() -> None:
         embeddings=[],
     )
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=FakeIndexStore(),
+        vector_store=vector_store,
     )
 
     document = KnowledgeDocument(
@@ -767,9 +841,12 @@ async def test_get_stale_documents_detects_stale_embedding() -> None:
         embeddings=[[0.1, 0.2, 0.3]],
     )
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=FakeIndexStore(),
+        vector_store=vector_store,
     )
 
     document = KnowledgeDocument(
@@ -810,11 +887,14 @@ async def test_get_stale_documents_accepts_matching_timestamp() -> None:
         embedded_at=timestamp,
     )
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=FakeEmbeddingService(
             embeddings=[],
         ),
         index_store=FakeIndexStore(),
+        vector_store=vector_store,
     )
 
     repository.documents = [embedded_document]
@@ -857,9 +937,12 @@ async def test_sync_documents_does_not_save_when_index_is_current() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     repository.documents = [
@@ -914,9 +997,12 @@ async def test_sync_documents_saves_when_document_is_new() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     repository.documents = [
@@ -978,9 +1064,12 @@ async def test_sync_documents_saves_when_document_is_deleted() -> None:
 
     index_store = FakeIndexStore()
 
+    vector_store = FakeVectorStore()
+
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=index_store,
+        vector_store=vector_store,
     )
 
     repository.documents = [

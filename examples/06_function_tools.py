@@ -5,11 +5,15 @@ from pathlib import Path
 from agents import Agent, Runner
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from qdrant_client import AsyncQdrantClient
 
 from enterprise_agent_platform.knowledge.embedding_repository import (
     EmbeddingRepository,
 )
 from enterprise_agent_platform.knowledge.file_index_store import FileIndexStore
+from enterprise_agent_platform.knowledge.qdrant_vector_store import (
+    QdrantVectorStore,
+)
 from enterprise_agent_platform.models.knowledge_document import KnowledgeDocument
 from enterprise_agent_platform.services.documentation import DocumentationService
 from enterprise_agent_platform.services.embedding import OpenAIEmbeddingService
@@ -22,15 +26,28 @@ load_dotenv()
 
 
 async def main() -> None:
-    client = AsyncOpenAI()
+    openai_client = AsyncOpenAI()
 
     embedding_service = OpenAIEmbeddingService(
-        client=client,
+        client=openai_client,
     )
+
+    qdrant_client = AsyncQdrantClient(
+        location=":memory:",
+    )
+
+    vector_store = QdrantVectorStore(
+        client=qdrant_client,
+        collection_name="test_documents",
+        dimensions=embedding_service.metadata.dimensions,
+    )
+
+    await vector_store.initialize()
 
     repository = EmbeddingRepository(
         embedding_service=embedding_service,
         index_store=FileIndexStore(Path("data/semantic_index.json")),
+        vector_store=vector_store,
     )
 
     documents = [
@@ -68,11 +85,13 @@ async def main() -> None:
     )
 
     agent = Agent(
-        name="Math Assistant",
+        name="Documentation Research Assistant",
         instructions="""
-        You are a helpful math assistant.
+        You are a helpful documentation research assistant.
 
-        Use tools whenever appropriate.
+        Use the documentation search tool whenever the user asks
+        about the project's documentation or Python concepts covered
+        by the documentation.
         """,
         tools=[add, documentation_tool],
     )
