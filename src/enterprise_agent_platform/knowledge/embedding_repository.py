@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 
-from enterprise_agent_platform.knowledge.similarity import cosine_similarity
 from enterprise_agent_platform.models.embedded_document import EmbeddedDocument
 from enterprise_agent_platform.models.knowledge_document import KnowledgeDocument
 from enterprise_agent_platform.models.knowledge_search_result import KnowledgeSearchResult
@@ -8,6 +7,7 @@ from enterprise_agent_platform.models.semantic_index import SemanticIndex
 from enterprise_agent_platform.services.protocols import (
     EmbeddingService,
     IndexStore,
+    VectorStore,
 )
 
 
@@ -16,10 +16,12 @@ class EmbeddingRepository:
         self,
         embedding_service: EmbeddingService,
         index_store: IndexStore,
-    ):
+        vector_store: VectorStore,
+    ) -> None:
         self.documents: list[EmbeddedDocument] = []
         self.embedding_service = embedding_service
         self.index_store = index_store
+        self.vector_store = vector_store
 
     async def index_documents(
         self,
@@ -35,7 +37,11 @@ class EmbeddingRepository:
         embedded_at = datetime.now(UTC)
 
         embedded_documents = [
-            EmbeddedDocument(document=document, embedding=embedding, embedded_at=embedded_at)
+            EmbeddedDocument(
+                document=document,
+                embedding=embedding,
+                embedded_at=embedded_at,
+            )
             for document, embedding in zip(
                 documents,
                 embeddings,
@@ -55,7 +61,11 @@ class EmbeddingRepository:
             documents=current_embedded_documents,
         )
 
+        # Persist the index metadata/documents.
         await self.index_store.save(index)
+
+        # Persist the actual vectors.
+        await self.vector_store.upsert_many(embedded_documents)
 
         self.documents = current_embedded_documents
 
@@ -72,37 +82,17 @@ class EmbeddingRepository:
     async def search(
         self,
         query: str,
+        limit: int = 5,
     ) -> list[KnowledgeSearchResult]:
         if not query.strip():
             raise ValueError("Query cannot be empty.")
 
-        if not self.documents:
-            return []
-
         query_embedding = await self.embedding_service.embed(query)
 
-        results: list[KnowledgeSearchResult] = []
-
-        for embedded_document in self.documents:
-            score = cosine_similarity(
-                query_embedding,
-                embedded_document.embedding,
-            )
-
-            results.append(
-                KnowledgeSearchResult(
-                    document=embedded_document.document,
-                    score=score,
-                    snippet="",
-                )
-            )
-
-        results.sort(
-            key=lambda result: result.score,
-            reverse=True,
+        return await self.vector_store.search(
+            query_embedding,
+            limit=limit,
         )
-
-        return results
 
     def _document_text(
         self,
@@ -150,6 +140,9 @@ class EmbeddingRepository:
 
         if stale_documents:
             await self.index_documents(stale_documents)
+
+        for document_id in deleted_ids:
+            await self.vector_store.delete(document_id)
 
         embedded_by_id = {
             embedded.document.id: embedded

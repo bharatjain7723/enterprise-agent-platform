@@ -1,5 +1,6 @@
 from typing import Protocol
 
+from enterprise_agent_platform.models.embedded_document import EmbeddedDocument
 from enterprise_agent_platform.models.embedding_metadata import EmbeddingMetadata
 from enterprise_agent_platform.models.knowledge_search_result import KnowledgeSearchResult
 from enterprise_agent_platform.models.semantic_index import SemanticIndex
@@ -36,3 +37,21 @@ class IndexStore(Protocol):
     ) -> None: ...
 
     async def load(self) -> SemanticIndex | None: ...
+
+
+class VectorStore(Protocol):
+    async def upsert_many(
+        self,
+        documents: list[EmbeddedDocument],
+    ) -> None: ...
+
+    async def delete(
+        self,
+        document_id: str,
+    ) -> None: ...
+
+    async def search(
+        self,
+        query_embedding: list[float],
+        limit: int = 5,
+    ) -> list[KnowledgeSearchResult]: ...

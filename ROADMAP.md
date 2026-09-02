@@ -59,50 +59,57 @@
   - [x] Index synchronization
   - [x] Wire the persisted index into startup/search
 
-- [ ] Vector Databases
-- [ ] Knowledge Search Service
-
 
 
 ## Sprint 5
+
+- [x] Vector Databases
+  - [x] VectorStore protocol
+  - [x] InMemoryVectorStore
+  - [x] Qdrant
+  - [x] Connect `EmbeddingRepository` → `VectorStore`
+
+
+
+## Sprint 6
 
 - [ ] Complete RAG
 - [ ] Agent Memory
 
 
 
-## Sprint 6
+## Sprint 7
 
 - [ ] Evaluation
 - [ ] MCP  
 
 
 
-## Sprint 7
+## Sprint 8
 
 - [ ] Multi-Agent Workflows
 
 
 
-## Sprint 8
+## Sprint 9
 
 - [ ] Observability
 
 
 
-## Sprint 9
+## Sprint 10
 
 - [ ] FastAPI
 
 
 
-## Sprint 10
+## Sprint 11
 
 - [ ] Deployment
 
 
 
-## Sprint 11 - Research prompt improvement
+## Sprint 12 - Research prompt improvement
 
 - [ ] Improve multi-search research strategy
 - [ ] Validate evidence relevance
