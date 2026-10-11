@@ -73,14 +73,16 @@
 
 ## Sprint 6
 
-- [ ] Complete RAG
-- [ ] Agent Memory
+- [x] Agent Memory
+- [ ] Reflection
+- [ ] Human in the loop
 
 
 
 ## Sprint 7
 
 - [ ] Evaluation
+- [ ] Gaurdrails
 - [ ] MCP  
 
 
