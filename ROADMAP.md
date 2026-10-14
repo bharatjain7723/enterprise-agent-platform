@@ -74,7 +74,7 @@
 ## Sprint 6
 
 - [x] Agent Memory
-- [ ] Reflection
+- [x] Reflection
 - [ ] Human in the loop
 
 
