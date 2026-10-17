@@ -75,13 +75,17 @@
 
 - [x] Agent Memory
 - [x] Reflection
-- [ ] Human in the loop
+- [x] Human in the loop
 
 
 
 ## Sprint 7
 
 - [ ] Evaluation
+    - [ ] Define evaluation models
+    - [ ] Build a deterministic evaluator
+    - [ ] Run an evaluation dataset
+    - [ ] Add an LLM-as-judge evaluator
 - [ ] Gaurdrails
 - [ ] MCP  
 
