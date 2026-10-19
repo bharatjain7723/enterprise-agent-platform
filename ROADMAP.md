@@ -82,10 +82,10 @@
 ## Sprint 7
 
 - [ ] Evaluation
-    - [ ] Define evaluation models
-    - [ ] Build a deterministic evaluator
-    - [ ] Run an evaluation dataset
-    - [ ] Add an LLM-as-judge evaluator
+    - [x] Define evaluation models
+    - [x] Build a deterministic evaluator
+    - [x] Run an evaluation dataset
+    - [x] Add an LLM-as-judge evaluator
 - [ ] Gaurdrails
 - [ ] MCP  
 

@@ -26,6 +26,7 @@ class BaseAgent[T]:
     instructions: str
     output_type: type[T]
     tools: list[Tool] = field(default_factory=lambda: list[Tool]())
+    model: str | None = None
 
     agent: Agent[T] = field(init=False)
 
@@ -35,6 +36,7 @@ class BaseAgent[T]:
             instructions=self.instructions,
             tools=self.tools,
             output_type=self.output_type,
+            model=self.model,
         )
 
     async def run(self, user_input: str) -> T:
