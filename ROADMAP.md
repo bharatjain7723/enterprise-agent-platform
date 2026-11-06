@@ -87,7 +87,7 @@
     - [x] Run an evaluation dataset
     - [x] Add an LLM-as-judge evaluator
 - [x] Gaurdrails
-- [ ] MCP  
+- [x] MCP  
 
 
 
